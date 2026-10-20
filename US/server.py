@@ -6,8 +6,6 @@ import urllib.error
 app = Flask(__name__)
 
 @app.route("/fibonacci", methods=["GET"])
-
-
 def handle_fibonacci():
     print("Received args:", request.args)
 
@@ -27,7 +25,6 @@ def handle_fibonacci():
     except ValueError:
         return Response("Invalid parameter format", status=400)
 
-    # Query Authoritative Server via UDP
     dns_query = f"TYPE=A\nNAME={hostname}\n"
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -43,15 +40,14 @@ def handle_fibonacci():
         return Response("DNS record not found", status=404)
 
     fs_ip = None
-    for line in dns_response.split("\n"):
-        if line.startswith("VALUE="):
-            fs_ip = line.split("=", 1)[1].strip()
+    for token in dns_response.replace("\n", " ").split():
+        if token.startswith("VALUE="):
+            fs_ip = token.split("=", 1)[1].strip()
             break
 
     if not fs_ip:
         return Response("Could not resolve IP from DNS response", status=500)
 
-    # Query Fibonacci Server over HTTP
     fs_url = f"http://{fs_ip}:{fs_port}/fibonacci?number={number}"
     try:
         req = urllib.request.Request(fs_url)

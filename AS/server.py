@@ -30,31 +30,30 @@ def run_server():
     while True:
         data, client_addr = sock.recvfrom(2048)
         message = data.decode("utf-8").strip()
-        lines = [line.strip() for line in message.split("\n") if line.strip()]
 
         parsed = {}
-        for line in lines:
-            if "=" in line:
-                key, val = line.split("=", 1)
-                parsed[key.strip()] = val.strip()
+        for line in message.splitlines():
+            for token in line.strip().split():
+                if "=" in token:
+                    key, val = token.split("=", 1)
+                    parsed[key.strip()] = val.strip()
 
-        # Registration format: TYPE, NAME, VALUE, TTL
-        if "VALUE" in parsed and "TTL" in parsed:
+        if "VALUE" in parsed and "NAME" in parsed and "TYPE" in parsed:
             rec_type = parsed.get("TYPE")
             name = parsed.get("NAME")
             val = parsed.get("VALUE")
-            ttl = parsed.get("TTL")
+            ttl = parsed.get("TTL", "10")
             save_record(rec_type, name, val, ttl)
             sock.sendto(b"SUCCESS\n", client_addr)
 
-        # Query format: TYPE, NAME
         elif "NAME" in parsed and "TYPE" in parsed:
             rec_type = parsed.get("TYPE")
             name = parsed.get("NAME")
             records = load_records()
             if (rec_type, name) in records:
                 value, ttl = records[(rec_type, name)]
-                response = f"TYPE={rec_type}\nNAME={name}\nVALUE={value}\nTTL={ttl}\n"
+                # Exactly follows lab specification format
+                response = f"TYPE={rec_type}\nNAME={name} VALUE={value} TTL={ttl}\n"
                 sock.sendto(response.encode("utf-8"), client_addr)
             else:
                 sock.sendto(b"NOT_FOUND\n", client_addr)
